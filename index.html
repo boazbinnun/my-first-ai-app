@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --accent-dim: #0ea5e9;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --radius: 12px;
+      --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(14, 165, 233, 0.08), transparent);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 28px;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 14px 18px;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--text-muted);
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+    }
+
+    button {
+      padding: 14px 22px;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #0f172a;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover {
+      background: var(--accent-dim);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .result {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      min-height: 160px;
+    }
+
+    .result.placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .result.loading {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .result.error {
+      color: #f87171;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .temp {
+      font-size: 2.75rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .city-name {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .description {
+      font-size: 1rem;
+      color: var(--text);
+      text-transform: capitalize;
+    }
+
+    .meta {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 20px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .meta span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Weather</h1>
+    <div class="search-row">
+      <input type="text" id="cityInput" placeholder="Enter city name" autocomplete="off">
+      <button type="button" id="searchBtn">Search</button>
+    </div>
+    <div class="result placeholder" id="result">
+      Enter a city and click Search
+    </div>
+  </div>
+
+  <script>
+    const cityInput = document.getElementById('cityInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const resultEl = document.getElementById('result');
+
+    async function getWeather(city) {
+      const geoRes = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+      );
+      const geoData = await geoRes.json();
+      if (!geoData.results || geoData.results.length === 0) {
+        throw new Error('City not found');
+      }
+      const { latitude, longitude, name } = geoData.results[0];
+      const weatherRes = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`
+      );
+      const weatherData = await weatherRes.json();
+      const cur = weatherData.current;
+      const code = cur.weather_code;
+      const descriptions = {
+        0: 'Clear sky',
+        1: 'Mainly clear',
+        2: 'Partly cloudy',
+        3: 'Overcast',
+        45: 'Foggy',
+        48: 'Depositing rime fog',
+        51: 'Light drizzle',
+        53: 'Drizzle',
+        55: 'Dense drizzle',
+        61: 'Slight rain',
+        63: 'Moderate rain',
+        65: 'Heavy rain',
+        71: 'Slight snow',
+        73: 'Moderate snow',
+        75: 'Heavy snow',
+        80: 'Slight rain showers',
+        81: 'Rain showers',
+        82: 'Violent rain showers',
+        95: 'Thunderstorm',
+        96: 'Thunderstorm with hail',
+        99: 'Thunderstorm with heavy hail'
+      };
+      const description = descriptions[code] || 'Unknown';
+      return {
+        city: name,
+        temp: Math.round(cur.temperature_2m),
+        description,
+        humidity: cur.relative_humidity_2m
+      };
+    }
+
+    function setResult(content, className = '') {
+      resultEl.className = 'result ' + className;
+      resultEl.innerHTML = content;
+    }
+
+    searchBtn.addEventListener('click', async () => {
+      const city = cityInput.value.trim();
+      if (!city) return;
+      setResult('Loading...', 'loading');
+      try {
+        const data = await getWeather(city);
+        setResult(`
+          <div class="temp">${data.temp}°C</div>
+          <div class="city-name">${data.city}</div>
+          <div class="description">${data.description}</div>
+          <div class="meta">
+            <span>Humidity: ${data.humidity}%</span>
+          </div>
+        `, '');
+      } catch (err) {
+        setResult(err.message || 'Something went wrong. Try another city.', 'error');
+      }
+    });
+
+    cityInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchBtn.click();
+    });
+  </script>
+</body>
+</html>
