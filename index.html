@@ -169,6 +169,36 @@
       gap: 6px;
     }
 
+    #forecast-container {
+      margin-top: 14px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .forecast-card {
+      flex: 1 1 120px;
+      padding: 14px 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 24px -16px rgba(0, 0, 0, 0.35);
+      text-align: center;
+    }
+
+    .forecast-date {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+    }
+
+    .forecast-temp {
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
     footer {
       margin-top: 16px;
       text-align: center;
@@ -198,6 +228,8 @@
     <div class="result placeholder" id="result">
       Enter a city and click Search
     </div>
+
+    <div id="forecast-container"></div>
   </div>
 
   <footer>
