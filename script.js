@@ -1,53 +1,85 @@
-// Gets city from input when button is clicked,
-// fetches current temperature from Open-Meteo,
-// and logs the result to the console.
-
-async function fetchCurrentTemperatureForCity(city) {
-  const geoRes = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
-  );
-  const geoData = await geoRes.json();
-
-  if (!geoData.results || geoData.results.length === 0) {
-    throw new Error(`City not found: ${city}`);
-  }
-
-  const { latitude, longitude, name } = geoData.results[0];
-
-  const weatherRes = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`
-  );
-  const weatherData = await weatherRes.json();
-
-  const tempC = weatherData?.current?.temperature_2m;
-  if (typeof tempC !== 'number') {
-    throw new Error('Temperature not available for this location.');
-  }
-
-  return { city: name, temperatureC: tempC };
+function getEl(id) {
+  return document.getElementById(id);
 }
 
-function setupCitySearchButton() {
-  const cityInput = document.getElementById('cityInput');
-  const searchBtn = document.getElementById('searchBtn');
+function getCityFromInput() {
+  const input = getEl('cityInput');
+  return input ? input.value.trim() : '';
+}
 
-  if (!cityInput || !searchBtn) return;
+function setResultText(text, variant = '') {
+  const result = getEl('result');
+  if (!result) return;
 
-  async function onSearchClick() {
-    const city = cityInput.value.trim();
-    if (!city) return;
+  // Keep the existing styling conventions from `index.html`:
+  // - `result placeholder`
+  // - `result loading`
+  // - `result error`
+  result.className = `result ${variant}`.trim();
+  result.textContent = text;
+}
 
-    try {
-      const { city: resolvedCity, temperatureC } =
-        await fetchCurrentTemperatureForCity(city);
+async function getLatLonForCity(city) {
+  const res = await fetch(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`
+  );
+  const data = await res.json();
 
-      console.log(`Current temperature in ${resolvedCity}: ${temperatureC}°C`);
-    } catch (err) {
-      console.error('Weather lookup failed:', err);
-    }
+  if (!data.results || data.results.length === 0) {
+    throw new Error('City not found');
   }
+
+  const { latitude, longitude, name } = data.results[0];
+  return { latitude, longitude, name };
+}
+
+async function getCurrentTemperature(latitude, longitude) {
+  const res = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&timezone=auto`
+  );
+  const data = await res.json();
+
+  const tempC = data?.current?.temperature_2m;
+  if (typeof tempC !== 'number') {
+    throw new Error('Temperature not available');
+  }
+
+  return tempC;
+}
+
+async function fetchCurrentTemperatureForCity(city) {
+  // Requirement: wrap fetch work in try...catch.
+  try {
+    const { latitude, longitude, name } = await getLatLonForCity(city);
+    const temperatureC = await getCurrentTemperature(latitude, longitude);
+    return { city: name, temperatureC };
+  } catch (err) {
+    // Bubble up a generic failure so the UI can show a friendly message.
+    throw err;
+  }
+}
+
+async function onSearchClick() {
+  const city = getCityFromInput();
+  if (!city) return;
+
+  setResultText('Loading...', 'loading');
+
+  try {
+    const { city: resolvedCity, temperatureC } =
+      await fetchCurrentTemperatureForCity(city);
+
+    setResultText(`Current temperature in ${resolvedCity}: ${Math.round(temperatureC)}°C`, '');
+  } catch {
+    setResultText('City not found or network error', 'error');
+  }
+}
+
+function setupCitySearch() {
+  const searchBtn = getEl('searchBtn');
+  if (!searchBtn) return;
 
   searchBtn.addEventListener('click', onSearchClick);
 }
 
-setupCitySearchButton();
+setupCitySearch();
